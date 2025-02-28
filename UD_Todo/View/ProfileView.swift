@@ -8,8 +8,31 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @State private var vm = ProfileViewModel()
+    
     var body: some View {
-        Text(/*@START_MENU_TOKEN@*/"Hello, World!"/*@END_MENU_TOKEN@*/)
+        NavigationStack{
+            VStack {
+                
+                Text(vm.user.name)
+                    .font(.system(size: 50, weight: .bold))
+                    .padding()
+                
+                Spacer()
+                
+                Button {
+                    vm.logout()
+                } label: {
+                    HStack {
+                        Text("Выйти")
+                        Image(systemName: "rectangle.portrait.and.arrow.forward")
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+        }
+        
     }
 }
 
