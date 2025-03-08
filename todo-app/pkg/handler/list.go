@@ -49,10 +49,10 @@ type getAllListsResponse struct {
 	Data []todo.TodoList `json:"data"`
 }
 
-// @Summary Get All Lists 
+// @Summary Get All Lists
 // @Security ApiKeyAuth
 // @Tags lists
-// @Description get all lists
+// @Description get all lists by id
 // @ID get-all-lists
 // @Accept  json
 // @Produce  json
@@ -82,7 +82,7 @@ func (h *Handler) getAllLists(c *gin.Context) {
 // @Summary Get List By Id
 // @Security ApiKeyAuth
 // @Tags lists
-// @Description get list by id
+// @Description get list by ListId
 // @ID get-list-by-id
 // @Accept  json
 // @Produce  json
@@ -113,6 +113,8 @@ func (h *Handler) getListById(c *gin.Context) {
 	c.JSON(http.StatusOK, list)
 }
 
+//change Title / description по listId(global)
+
 func (h *Handler) updateList(c *gin.Context) {
 	userId, err := getUserId(c)
 	if err != nil {
@@ -140,6 +142,7 @@ func (h *Handler) updateList(c *gin.Context) {
 	c.JSON(http.StatusOK, statusResponse{"ok"})
 }
 
+// удаление списка по listId(gloabal)
 func (h *Handler) deleteList(c *gin.Context) {
 	userId, err := getUserId(c)
 	if err != nil {
