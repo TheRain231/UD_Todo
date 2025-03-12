@@ -3,20 +3,28 @@ version: '3.8'
 services:
   todo-app:
     build: ./
-    command: ./wait-for-postgres.sh db ./todo-app
+    command: ./todo-app
     ports:
-      - 8000:8000
+      - "8000:8000"
     depends_on:
-      - db
+      - mongodb
     environment:
-      - DB_PASSWORD=qwerty
+      DB_HOST: mongodb
+      DB_PORT: 27017
+      DB_USERNAME: admin
+      DB_PASSWORD: qwerty
+      DB_NAME: todo_db
+      DB_SSLMODE: false
 
-  db:
+  mongodb:
+    image: mongo
     restart: always
-    image: postgres:latest
-    volumes:
-    - ./.database/postgres/data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=qwerty
     ports:
-      - 5436:5432
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: qwerty
+      MONGO_INITDB_DATABASE: todo_db
+    volumes:
+      - ./data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js

@@ -1,19 +1,24 @@
-FROM golang:1.14-buster
+# Используем официальный образ Go 1.21 на базе Alpine
+FROM golang:1.23-alpine
 
+# Проверяем версию Go
 RUN go version
-ENV GOPATH=/
 
-COPY ./ ./
+# Устанавливаем рабочую директорию
+WORKDIR /app
 
-# install psql
-RUN apt-get update
-RUN apt-get -y install postgresql-client
+# Копируем зависимости
+COPY go.mod .
+COPY go.sum .
 
-# make wait-for-postgres.sh executable
-RUN chmod +x wait-for-postgres.sh
-
-# build go app
+# Скачиваем зависимости
 RUN go mod download
+
+# Копируем исходный код
+COPY . .
+
+# Собираем приложение
 RUN go build -o todo-app ./cmd/main.go
 
+# Команда для запуска приложения
 CMD ["./todo-app"]

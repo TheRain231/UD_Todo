@@ -1,8 +1,8 @@
 package repository
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/zhashkevych/todo-app"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type Authorization interface {
@@ -32,10 +32,10 @@ type Repository struct {
 	TodoItem
 }
 
-func NewRepository(db *sqlx.DB) *Repository {
+func NewRepository(client *mongo.Client, dbName string) *Repository {
 	return &Repository{
-		Authorization: NewAuthPostgres(db),
-		TodoList:      NewTodoListPostgres(db),
-		TodoItem:      NewTodoItemPostgres(db),
+		Authorization: NewAuthMongoDB(client, dbName),
+		TodoList:      NewTodoListMongoDB(client, dbName),
+		TodoItem:      NewTodoItemMongoDB(client, dbName),
 	}
 }

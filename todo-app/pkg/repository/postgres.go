@@ -1,38 +1,55 @@
 package repository
 
 import (
+	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"time"
 )
 
 const (
-	usersTable      = "users"
-	todoListsTable  = "todo_lists"
-	usersListsTable = "users_lists"
-	todoItemsTable  = "todo_items"
-	listsItemsTable = "lists_items"
+	usersTable      = "users"       // Коллекция пользователей
+	todoListsTable  = "todo_lists"  // Коллекция списков дел
+	usersListsTable = "users_lists" // Коллекция связей пользователей и списков
+	todoItemsTable  = "todo_items"  // Коллекция элементов списка
+	listsItemsTable = "lists_items" // Коллекция связей списков и элементов
+	countersTable   = "counters"    // Коллекция счетчиков для автоинкремента
 )
 
 type Config struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	DBName   string
-	SSLMode  string
+	Host     string // Хост MongoDB
+	Port     string // Порт MongoDB
+	Username string // Имя пользователя
+	Password string // Пароль
+	DBName   string // Имя базы данных
+	SSLMode  string // Режим SSL (true/false)
 }
 
-func NewPostgresDB(cfg Config) (*sqlx.DB, error) {
-	db, err := sqlx.Open("postgres", fmt.Sprintf("host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.Username, cfg.DBName, cfg.Password, cfg.SSLMode))
+func NewMongoDB(cfg Config) (*mongo.Client, error) {
+	// Формируем URI для подключения к MongoDB
+	time.Sleep(5 * time.Second) // Ждем 5 секунд
+	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s/%s?authSource=admin&ssl=%s",
+		cfg.Username,
+		cfg.Password,
+		"mongodb", // Имя сервиса из docker-compose.yml
+		cfg.Port,
+		cfg.DBName,
+		cfg.SSLMode,
+	)
+
+	// Настройки клиента
+	clientOptions := options.Client().ApplyURI(uri)
+	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
 	}
 
-	err = db.Ping()
+	// Проверка подключения
+	err = client.Ping(context.TODO(), nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to ping MongoDB: %w", err)
 	}
 
-	return db, nil
+	return client, nil
 }

@@ -1,103 +1,184 @@
 package repository
 
 import (
+	"context"
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	"github.com/sirupsen/logrus"
 	"github.com/zhashkevych/todo-app"
-	"strings"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type TodoListPostgres struct {
-	db *sqlx.DB
+type TodoListMongoDB struct {
+	client *mongo.Client
+	dbName string
 }
 
-func NewTodoListPostgres(db *sqlx.DB) *TodoListPostgres {
-	return &TodoListPostgres{db: db}
+func NewTodoListMongoDB(client *mongo.Client, dbName string) *TodoListMongoDB {
+	return &TodoListMongoDB{client: client, dbName: dbName}
 }
 
-func (r *TodoListPostgres) Create(userId int, list todo.TodoList) (int, error) {
-	tx, err := r.db.Begin()
+func (r *TodoListMongoDB) Create(userId int, list todo.TodoList) (int, error) {
+	ctx := context.TODO()
+	collection := r.client.Database(r.dbName).Collection(todoListsTable)
+	counterCollection := r.client.Database(r.dbName).Collection("counters")
+
+	// Генерация ID через коллекцию счетчиков
+	counterFilter := bson.M{"_id": todoListsTable}
+	counterUpdate := bson.M{"$inc": bson.M{"sequence_value": 1}}
+
+	var counter struct {
+		SequenceValue int `bson:"sequence_value"`
+	}
+	err := counterCollection.FindOneAndUpdate(
+		ctx,
+		counterFilter,
+		counterUpdate,
+		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
+	).Decode(&counter)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to generate list ID: %w", err)
 	}
 
-	var id int
-	createListQuery := fmt.Sprintf("INSERT INTO %s (title, description) VALUES ($1, $2) RETURNING id", todoListsTable)
-	row := tx.QueryRow(createListQuery, list.Title, list.Description)
-	if err := row.Scan(&id); err != nil {
-		tx.Rollback()
-		return 0, err
+	// Создаем документ для MongoDB
+	listDoc := bson.M{
+		"id":          counter.SequenceValue,
+		"title":       list.Title,
+		"description": list.Description,
+		"user_id":     userId,
 	}
 
-	createUsersListQuery := fmt.Sprintf("INSERT INTO %s (user_id, list_id) VALUES ($1, $2)", usersListsTable)
-	_, err = tx.Exec(createUsersListQuery, userId, id)
+	// Вставка списка
+	_, err = collection.InsertOne(ctx, listDoc)
 	if err != nil {
-		tx.Rollback()
-		return 0, err
+		return 0, fmt.Errorf("failed to create todo list: %w", err)
 	}
 
-	return id, tx.Commit()
+	return counter.SequenceValue, nil
 }
 
-func (r *TodoListPostgres) GetAll(userId int) ([]todo.TodoList, error) {
+func (r *TodoListMongoDB) GetAll(userId int) ([]todo.TodoList, error) {
+	ctx := context.TODO()
+	collection := r.client.Database(r.dbName).Collection(todoListsTable)
+
+	// Фильтр по user_id
+	filter := bson.M{"user_id": userId}
+
+	// Выборка всех списков
+	cursor, err := collection.Find(ctx, filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get todo lists: %w", err)
+	}
+	defer cursor.Close(ctx)
+
 	var lists []todo.TodoList
+	for cursor.Next(ctx) {
+		var result bson.M
+		if err := cursor.Decode(&result); err != nil {
+			return nil, fmt.Errorf("failed to decode todo list: %w", err)
+		}
 
-	query := fmt.Sprintf("SELECT tl.id, tl.title, tl.description FROM %s tl INNER JOIN %s ul on tl.id = ul.list_id WHERE ul.user_id = $1",
-		todoListsTable, usersListsTable)
-	err := r.db.Select(&lists, query, userId)
+		// Преобразуем BSON-документ в структуру TodoList
+		var list todo.TodoList
+		if id, ok := result["id"].(int32); ok {
+			list.Id = int(id)
+		}
+		if title, ok := result["title"].(string); ok {
+			list.Title = title
+		}
+		if description, ok := result["description"].(string); ok {
+			list.Description = description
+		}
 
-	return lists, err
+		lists = append(lists, list)
+	}
+
+	return lists, nil
 }
 
-func (r *TodoListPostgres) GetById(userId, listId int) (todo.TodoList, error) {
+func (r *TodoListMongoDB) GetById(userId, listId int) (todo.TodoList, error) {
+	ctx := context.TODO()
 	var list todo.TodoList
+	collection := r.client.Database(r.dbName).Collection(todoListsTable)
 
-	query := fmt.Sprintf(`SELECT tl.id, tl.title, tl.description FROM %s tl
-								INNER JOIN %s ul on tl.id = ul.list_id WHERE ul.user_id = $1 AND ul.list_id = $2`,
-		todoListsTable, usersListsTable)
-	err := r.db.Get(&list, query, userId, listId)
+	// Фильтр по user_id и id
+	filter := bson.M{
+		"id":      listId,
+		"user_id": userId,
+	}
 
-	return list, err
+	// Находим документ
+	var result bson.M
+	err := collection.FindOne(ctx, filter).Decode(&result)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return list, fmt.Errorf("todo list not found: %w", err)
+		}
+		return list, fmt.Errorf("failed to get todo list: %w", err)
+	}
+
+	// Преобразуем BSON-документ в структуру TodoList
+	if id, ok := result["id"].(int32); ok {
+		list.Id = int(id)
+	}
+	if title, ok := result["title"].(string); ok {
+		list.Title = title
+	}
+	if description, ok := result["description"].(string); ok {
+		list.Description = description
+	}
+
+	return list, nil
 }
 
-func (r *TodoListPostgres) Delete(userId, listId int) error {
-	query := fmt.Sprintf("DELETE FROM %s tl USING %s ul WHERE tl.id = ul.list_id AND ul.user_id=$1 AND ul.list_id=$2",
-		todoListsTable, usersListsTable)
-	_, err := r.db.Exec(query, userId, listId)
+func (r *TodoListMongoDB) Delete(userId, listId int) error {
+	ctx := context.TODO()
+	collection := r.client.Database(r.dbName).Collection(todoListsTable)
 
-	return err
+	// Фильтр по user_id и id
+	filter := bson.M{
+		"id":      listId,
+		"user_id": userId,
+	}
+
+	// Удаление документа
+	_, err := collection.DeleteOne(ctx, filter)
+	if err != nil {
+		return fmt.Errorf("failed to delete todo list: %w", err)
+	}
+
+	return nil
 }
 
-func (r *TodoListPostgres) Update(userId, listId int, input todo.UpdateListInput) error {
-	setValues := make([]string, 0)
-	args := make([]interface{}, 0)
-	argId := 1
+func (r *TodoListMongoDB) Update(userId, listId int, input todo.UpdateListInput) error {
+	ctx := context.TODO()
+	collection := r.client.Database(r.dbName).Collection(todoListsTable)
 
+	// Фильтр по user_id и id
+	filter := bson.M{
+		"id":      listId,
+		"user_id": userId,
+	}
+
+	// Подготовка обновления
+	update := bson.M{}
 	if input.Title != nil {
-		setValues = append(setValues, fmt.Sprintf("title=$%d", argId))
-		args = append(args, *input.Title)
-		argId++
+		update["title"] = *input.Title
 	}
-
 	if input.Description != nil {
-		setValues = append(setValues, fmt.Sprintf("description=$%d", argId))
-		args = append(args, *input.Description)
-		argId++
+		update["description"] = *input.Description
 	}
 
-	// title=$1
-	// description=$1
-	// title=$1, description=$2
-	setQuery := strings.Join(setValues, ", ")
+	// Проверка, что есть что обновлять
+	if len(update) == 0 {
+		return fmt.Errorf("update structure has no values")
+	}
 
-	query := fmt.Sprintf("UPDATE %s tl SET %s FROM %s ul WHERE tl.id = ul.list_id AND ul.list_id=$%d AND ul.user_id=$%d",
-		todoListsTable, setQuery, usersListsTable, argId, argId+1)
-	args = append(args, listId, userId)
+	// Обновление документа
+	_, err := collection.UpdateOne(ctx, filter, bson.M{"$set": update})
+	if err != nil {
+		return fmt.Errorf("failed to update todo list: %w", err)
+	}
 
-	logrus.Debugf("updateQuery: %s", query)
-	logrus.Debugf("args: %s", args)
-
-	_, err := r.db.Exec(query, args...)
-	return err
+	return nil
 }

@@ -1,8 +1,8 @@
 port: "8000"
 
 db:
-    username: "postgres"
-    host: "localhost"
-    port: "5432"
-    dbname: "postgres"
-    sslmode: "disable"
+    host: "localhost"       # Хост MongoDB (по умолчанию localhost)
+    port: "27017"           # Порт MongoDB (по умолчанию 27017)
+    username: "admin"       # Имя пользователя MongoDB (если используется аутентификация)
+    dbname: "todo_db"       # Имя базы данных
+    sslmode: "false"        # Режим SSL (true/false)
