@@ -9,24 +9,24 @@ import SwiftUI
 
 struct ListView: View {
     var todoList: TodoList
-    @State private var vm = ListViewModel()
+    @State private var vm = ListViewModel(allItems: todoItems)
     
     var body: some View {
         NavigationStack {
             List {
-                ForEach(vm.todoList.todoItems.indices, id: \.self) { index in
+                ForEach(vm.todoItems.indices, id: \.self) { index in
                     HStack {
                         Button {
                             vm.toggleItemDone(at: index)
                         } label: {
-                            circleImage(vm.todoList.todoItems[index].done)
+                            circleImage(vm.todoItems[index].done)
                         }
                         .buttonStyle(.plain)
                         
                         Button {
                             vm.onItemClicked(index)
                         } label: {
-                            Text(vm.todoList.todoItems[index].title)
+                            Text(vm.todoItems[index].title)
                         }
                         .foregroundStyle(.primary)
                     }
@@ -87,10 +87,10 @@ struct ListView: View {
     var detailSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 10) {
-                Text(vm.todoList.todoItems[vm.selectedItemId!].title)
+                Text(vm.todoItems[vm.selectedItemId!].title)
                     .font(.largeTitle)
                     .bold()
-                Text(vm.todoList.todoItems[vm.selectedItemId!].description)
+                Text(vm.todoItems[vm.selectedItemId!].description)
                 
                 Spacer()
                 
@@ -98,12 +98,12 @@ struct ListView: View {
                     vm.toggleItemDone(at: vm.selectedItemId!)
                 } label: {
                     Text("Выполнено")
-                        .foregroundStyle(vm.todoList.todoItems[vm.selectedItemId!].done ? Color.black : Color.white)
+                        .foregroundStyle(vm.todoItems[vm.selectedItemId!].done ? Color.black : Color.white)
                         .padding()
                         .frame(maxWidth: .infinity)
                         .background {
                             RoundedRectangle(cornerRadius: 10)
-                                .foregroundStyle(vm.todoList.todoItems[vm.selectedItemId!].done ? Color.gray : Color.blue)
+                                .foregroundStyle(vm.todoItems[vm.selectedItemId!].done ? Color.gray : Color.blue)
                         }
                 }
                 

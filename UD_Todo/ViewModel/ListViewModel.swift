@@ -10,6 +10,7 @@ import SwiftUI
 @Observable
 final class ListViewModel {
     var todoList: TodoList
+    var todoItems: [TodoItem]
     
     var isAddingSheetPresented = false
     var addingTitle = ""
@@ -18,20 +19,17 @@ final class ListViewModel {
     var isDetailSheetPresented = false
     var selectedItemId: Int? = nil
     
-    init(todoList: TodoList) {
+    init(todoList: TodoList = TodoList(id: 0, title: "didn't load", description: "nothing here"), allItems: [TodoItem]) {
         self.todoList = todoList
+        self.todoItems = allItems.filter { $0.master_id == todoList.id }
     }
-    
-    init() {
-        self.todoList = TodoList(description: "nothing here", id: 0, title: "didn't load")
-    }
-    
+
     func toggleItemDone(at index: Int) {
-        todoList.todoItems[index].toggleDone()
+        todoItems[index].toggleDone()
     }
 
     func removeItems(at offsets: IndexSet) {
-        todoList.todoItems.remove(atOffsets: offsets)
+        todoItems.remove(atOffsets: offsets)
     }
     
     func onAddButtonClicked() {

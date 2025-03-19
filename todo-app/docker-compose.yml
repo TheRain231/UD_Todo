@@ -1,5 +1,8 @@
 version: '3.8'
 
+networks:
+  todo_network:
+
 services:
   todo-app:
     build: ./
@@ -8,6 +11,8 @@ services:
       - "8000:8000"
     depends_on:
       - mongodb
+    networks:
+      - todo_network
     environment:
       DB_HOST: mongodb
       DB_PORT: 27017
@@ -21,6 +26,8 @@ services:
     restart: always
     ports:
       - "27017:27017"
+    networks:
+      - todo_network
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: qwerty

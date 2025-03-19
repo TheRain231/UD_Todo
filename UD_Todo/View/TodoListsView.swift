@@ -14,7 +14,7 @@ struct TodoListsView: View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 100)), count: 2), spacing: 5) {
-                    ForEach(vm.todoLists) { todoList in
+                    ForEach(vm.todoLists, id: \.id) { todoList in
                         NavigationLink(destination: ListView(todoList: todoList)) {
                             ListCellView(todoList: todoList)
                         }

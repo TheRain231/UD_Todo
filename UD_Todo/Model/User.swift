@@ -5,7 +5,7 @@
 //  Created by Андрей Степанов on 26.02.2025.
 //
 
-final class User {
+final class User: Codable {
     static var shared = User(name: "user", password: "1234", username: "username")
     
     var name: String = ""

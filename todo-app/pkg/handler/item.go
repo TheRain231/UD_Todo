@@ -1,10 +1,12 @@
 package handler
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/zhashkevych/todo-app"
 	"net/http"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+	"github.com/zhashkevych/todo-app"
 )
 
 // создать item в список ListId(global)
@@ -57,7 +59,7 @@ func (h *Handler) getAllItems(c *gin.Context) {
 		newErrorResponse(c, http.StatusInternalServerError, err.Error())
 		return
 	}
-
+	logrus.Println(items)
 	c.JSON(http.StatusOK, items)
 }
 
