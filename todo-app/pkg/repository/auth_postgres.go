@@ -19,42 +19,54 @@ func NewAuthMongoDB(client *mongo.Client, dbName string) *AuthMongoDB {
 }
 
 func (r *AuthMongoDB) CreateUser(user todo.User) (int, error) {
-	ctx := context.TODO()
-	collection := r.client.Database(r.dbName).Collection(usersTable)
-	counterCollection := r.client.Database(r.dbName).Collection("counters")
+    ctx := context.TODO()
+    collection := r.client.Database(r.dbName).Collection(usersTable)
+    counterCollection := r.client.Database(r.dbName).Collection("counters")
 
-	// Генерация ID через коллекцию счетчиков
-	counterFilter := bson.M{"_id": usersTable}
-	counterUpdate := bson.M{"$inc": bson.M{"sequence_value": 1}}
+    // Проверка уникальности логина
+    existingUserFilter := bson.M{"username": user.Username}
+    var existingUser bson.M
+    err := collection.FindOne(ctx, existingUserFilter).Decode(&existingUser)
+    if err == nil {
+        // Если пользователь с таким логином уже существует
+        return 0, fmt.Errorf("user with this username already exists")
+    } else if err != mongo.ErrNoDocuments {
+        // Если произошла ошибка, отличная от "документ не найден"
+        return 0, fmt.Errorf("failed to check username uniqueness: %w", err)
+    }
 
-	var counter struct {
-		SequenceValue int `bson:"sequence_value"`
-	}
-	err := counterCollection.FindOneAndUpdate(
-		ctx,
-		counterFilter,
-		counterUpdate,
-		options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
-	).Decode(&counter)
-	if err != nil {
-		return 0, fmt.Errorf("failed to generate user ID: %w", err)
-	}
+    // Генерация ID через коллекцию счетчиков
+    counterFilter := bson.M{"_id": usersTable}
+    counterUpdate := bson.M{"$inc": bson.M{"sequence_value": 1}}
 
-	// Создаем документ для MongoDB
-	userDoc := bson.M{
-		"id":            counter.SequenceValue,
-		"name":          user.Name,
-		"username":      user.Username,
-		"password_hash": user.Password, // Предполагается, что пароль уже хэширован
-	}
+    var counter struct {
+        SequenceValue int `bson:"sequence_value"`
+    }
+    err = counterCollection.FindOneAndUpdate(
+        ctx,
+        counterFilter,
+        counterUpdate,
+        options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After),
+    ).Decode(&counter)
+    if err != nil {
+        return 0, fmt.Errorf("failed to generate user ID: %w", err)
+    }
 
-	// Вставка пользователя
-	_, err = collection.InsertOne(ctx, userDoc)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create user: %w", err)
-	}
+    // Создаем документ для MongoDB
+    userDoc := bson.M{
+        "id":            counter.SequenceValue,
+        "name":          user.Name,
+        "username":      user.Username,
+        "password_hash": user.Password, // Предполагается, что пароль уже хэширован
+    }
 
-	return counter.SequenceValue, nil
+    // Вставка пользователя
+    _, err = collection.InsertOne(ctx, userDoc)
+    if err != nil {
+        return 0, fmt.Errorf("failed to create user: %w", err)
+    }
+
+    return counter.SequenceValue, nil
 }
 
 func (r *AuthMongoDB) GetUser(username, password string) (todo.User, error) {
