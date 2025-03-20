@@ -18,6 +18,10 @@ struct RegisterView: View {
                 .font(.largeTitle)
                 .bold()
             
+            TextField("Имя", text: $viewModel.name)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal)
+            
             TextField("Логин", text: $viewModel.username)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.horizontal)
@@ -33,7 +37,24 @@ struct RegisterView: View {
             }
             
             Button("Зарегистрироваться") {
-                viewModel.signUp()
+                AuthManager.shared.signUp(name: viewModel.name,
+                                   username: viewModel.username,
+                                   password: viewModel.password) { result in
+                    switch result {
+                    case .success(_):
+                        AuthManager.shared.signIn(username: viewModel.username,
+                                           password: viewModel.password, completion: { res in
+                            switch res {
+                            case .success(_):
+                                return
+                            case .failure(let failure):
+                                viewModel.errorMessage = failure.localizedDescription
+                            }
+                        })
+                    case .failure(let failure):
+                        viewModel.errorMessage = failure.localizedDescription
+                    }
+                }
             }
             .buttonStyle(.borderedProminent)
             
@@ -41,16 +62,11 @@ struct RegisterView: View {
                 navigateToLogin = true
             }
             .foregroundColor(.blue)
-            
-            if viewModel.isAuthenticated {
-                Text("Регистрация успешна!")
-                    .foregroundColor(.green)
-                    .font(.headline)
-            }
         }
         .padding()
         .navigationDestination(isPresented: $navigateToLogin) {
             LoginView()
+                .navigationBarBackButtonHidden()
         }
     }
 }

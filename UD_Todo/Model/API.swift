@@ -49,6 +49,8 @@ struct TodoListItemResponse: Codable {
 }
 
 class AuthManager: ObservableObject {
+    static let shared = AuthManager()
+    
     @Published var isAuthenticated: Bool = false
     private var token: String
     private let keychain = KeychainSwift()
@@ -279,6 +281,45 @@ class AuthManager: ObservableObject {
             completion(.success(()))
         }.resume()
     }
+    
+    // MARK: - Get All Items for List
+    func getItemsForList(listId: Int, completion: @escaping (Result<[TodoListItemResponse], Error>) -> Void) {
+        let url = URL(string: "\(API.baseURL)/api/lists/\(listId)/items")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let sessionConfiguration = URLSessionConfiguration.default
+
+        sessionConfiguration.httpAdditionalHeaders = [
+            "Authorization": "Bearer \(token)"
+        ]
+
+        let session = URLSession(configuration: sessionConfiguration)
+
+        session.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                completion(.failure(error!))
+                return
+            }
+            do {
+                let json = try JSONSerialization.jsonObject(with: data, options: [])
+
+                if let dict = json as? [String: Any] {
+                    if let message = dict["message"] as? String {
+                        completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: message])))
+                        return
+                    }
+                }
+                
+                let items = try JSONDecoder().decode([TodoListItemResponse].self, from: data)
+                completion(.success(items))
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
 
     // MARK: - Get Item by ID (Check list_id)
     func getItemById(itemId: Int, completion: @escaping (Result<TodoListItemResponse, Error>) -> Void) {
@@ -335,10 +376,25 @@ class AuthManager: ObservableObject {
                 return
             }
             do {
+                let json = try JSONSerialization.jsonObject(with: data, options: [])
+
+                if let dict = json as? [String: Any] {
+                    if let message = dict["message"] as? String {
+                        completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: message])))
+                        return
+                    }
+                }
+                
                 let authResponse = try JSONDecoder().decode(AuthResponse.self, from: data)
                 self.token = authResponse.token
                 self.keychain.set(self.token, forKey: "token")
                 print("Token - \(self.token)")
+                
+                DispatchQueue.main.async {
+                    self.isAuthenticated = true
+                    NotificationCenter.default.post(name: .login, object: nil)
+                }
+                
                 completion(.success(authResponse.token))
             } catch {
                 completion(.failure(error))
@@ -363,6 +419,15 @@ class AuthManager: ObservableObject {
                 return
             }
             do {
+                let json = try JSONSerialization.jsonObject(with: data, options: [])
+
+                if let dict = json as? [String: Any] {
+                    if let message = dict["message"] as? String {
+                        completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: message])))
+                        return
+                    }
+                }
+                
                 let signResponse = try JSONDecoder().decode(SignResponse.self, from: data)
                 completion(.success(signResponse.id))
             } catch {

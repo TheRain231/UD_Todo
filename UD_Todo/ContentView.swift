@@ -8,19 +8,34 @@
 import SwiftUI
 
 struct ContentView: View {
-    var body: some View {
-        TabView {
-            TodoListsView()
-                .tabItem {
-                    Label("Задачи", systemImage: "list.bullet")
-                }
-            
-            ProfileView()
-                .tabItem {
-                    Label("Профиль", systemImage: "person.fill")
-                }
+    @State var isAuthenticated = false {
+        didSet {
+            print(isAuthenticated)
         }
     }
+
+    var body: some View {
+        Group {
+            if isAuthenticated {
+                MainView()
+            } else {
+                NavigationStack {
+                    LoginView()
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .login, object: nil)) { _ in
+            isAuthenticated = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .logout, object: nil)) { _ in
+            isAuthenticated = false
+        }
+    }
+}
+
+extension Notification.Name {
+    static let login = Notification.Name("login")
+    static let logout = Notification.Name("logout")
 }
 
 #Preview {

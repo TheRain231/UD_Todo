@@ -33,7 +33,15 @@ struct LoginView: View {
             }
             
             Button("Войти") {
-                viewModel.signIn()
+                AuthManager.shared.signIn(username: viewModel.username,
+                                   password: viewModel.password) { result in
+                    switch result {
+                    case .success(_):
+                        return
+                    case .failure(let failure):
+                        viewModel.errorMessage = failure.localizedDescription
+                    }
+                }
             }
             .buttonStyle(.borderedProminent)
             
@@ -41,16 +49,11 @@ struct LoginView: View {
                 navigateToRegister = true
             }
             .foregroundColor(.blue)
-            
-            if viewModel.isAuthenticated {
-                Text("Вы успешно вошли!")
-                    .foregroundColor(.green)
-                    .font(.headline)
-            }
         }
         .padding()
         .navigationDestination(isPresented: $navigateToRegister) {
             RegisterView()
+                .navigationBarBackButtonHidden()
         }
     }
 }
