@@ -57,20 +57,11 @@ func (r *TodoItemMongoDB) Create(listId int, item todo.TodoItem) (int, error) {
 
 func (r *TodoItemMongoDB) GetAll(userId, listId int) ([]todo.TodoItem, error) {
 	ctx := context.TODO()
-	pipeline := []bson.M{
-		{"$match": bson.M{"list_id": listId}},
-		{"$lookup": bson.M{
-			"from":         usersListsTable,
-			"localField":   "list_id",
-			"foreignField": "list_id",
-			"as":           "user_list",
-		}},
-		{"$match": bson.M{"user_list.user_id": userId}},
-	}
+	fmt.Println("Querying items for list_id:", listId)
 
-	cursor, err := r.client.Database(r.dbName).Collection(todoItemsTable).Aggregate(ctx, pipeline)
+	cursor, err := r.client.Database(r.dbName).Collection(todoItemsTable).Find(ctx, bson.M{"list_id": listId})
 	if err != nil {
-		return nil, fmt.Errorf("aggregation failed: %w", err)
+		return nil, fmt.Errorf("query failed: %w", err)
 	}
 
 	var items []todo.TodoItem
