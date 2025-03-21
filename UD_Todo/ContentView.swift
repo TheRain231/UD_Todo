@@ -8,11 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State var isAuthenticated = false {
-        didSet {
-            print(isAuthenticated)
-        }
-    }
+    @State var isAuthenticated = false
 
     var body: some View {
         Group {

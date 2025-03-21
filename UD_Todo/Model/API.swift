@@ -21,11 +21,6 @@ struct SignResponse: Codable {
     let id: Int
 }
 
-struct ListsResponse: Decodable {
-    let data: [TodoListResponse]?
-    let error: String?
-}
-
 class JSONNull: Decodable {
     required init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
@@ -33,19 +28,6 @@ class JSONNull: Decodable {
             throw DecodingError.typeMismatch(JSONNull.self, DecodingError.Context(codingPath: decoder.codingPath, debugDescription: "Expected null"))
         }
     }
-}
-
-struct TodoListResponse: Codable {
-    let id: Int?
-    let title: String
-    let description: String?
-}
-
-struct TodoListItemResponse: Codable {
-    let id: Int?
-    let title: String
-    let description: String?
-    let done: Bool
 }
 
 class AuthManager: ObservableObject {
@@ -60,7 +42,7 @@ class AuthManager: ObservableObject {
     }
     
     // MARK: - Fetch All Lists
-    func getAllLists(completion: @escaping (Result<[TodoListResponse], Error>) -> Void) {
+    func getAllLists(completion: @escaping (Result<[TodoList], Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -91,7 +73,7 @@ class AuthManager: ObservableObject {
                     
                     if let listArray = dict["data"] as? [[String: Any]] {
                         let jsonData = try JSONSerialization.data(withJSONObject: listArray)
-                        let lists = try JSONDecoder().decode([TodoListResponse].self, from: jsonData)
+                        let lists = try JSONDecoder().decode([TodoList].self, from: jsonData)
                         completion(.success(lists))
                         return
                     }
@@ -115,7 +97,7 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Fetch List by ID
-    func getListById(listId: Int, completion: @escaping (Result<TodoListResponse, Error>) -> Void) {
+    func getListById(listId: Int, completion: @escaping (Result<TodoList, Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists/\(listId)")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -149,7 +131,7 @@ class AuthManager: ObservableObject {
                         return
                     }
                     
-                    let list = try JSONDecoder().decode(TodoListResponse.self, from: data)
+                    let list = try JSONDecoder().decode(TodoList.self, from: data)
                     completion(.success(list))
                 }
             } catch {
@@ -159,14 +141,14 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Create List
-    func createList(title: String, description: String?, completion: @escaping (Result<Int, Error>) -> Void) {
+    func createList(title: String, description: String, completion: @escaping (Result<Int, Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let newList = TodoListResponse(id: nil, title: title, description: description)
+        let newList = TodoList(id: 0, title: title, description: description)
         request.httpBody = try? JSONEncoder().encode(newList)
         
         let sessionConfiguration = URLSessionConfiguration.default
@@ -203,14 +185,14 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Update List
-    func updateList(listId: Int, title: String, description: String?, completion: @escaping (Result<Void, Error>) -> Void) {
+    func updateList(listId: Int, title: String, description: String, completion: @escaping (Result<Void, Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists/\(listId)")!
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let updatedList = TodoListResponse(id: listId, title: title, description: description)
+        let updatedList = TodoList(id: listId, title: title, description: description)
         request.httpBody = try? JSONEncoder().encode(updatedList)
         
         let sessionConfiguration = URLSessionConfiguration.default
@@ -255,14 +237,14 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Add Item to List
-    func addItemToList(listId: Int, itemTitle: String, completion: @escaping (Result<Void, Error>) -> Void) {
+    func addItemToList(listId: Int, itemTitle: String, itemDescription: String, completion: @escaping (Result<Int, Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists/\(listId)/items")!
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let newItem = ["title": itemTitle]
+        let newItem = ["title": itemTitle, "desription": itemDescription]
         request.httpBody = try? JSONEncoder().encode(newItem)
         
         let sessionConfiguration = URLSessionConfiguration.default
@@ -273,17 +255,33 @@ class AuthManager: ObservableObject {
 
         let session = URLSession(configuration: sessionConfiguration)
 
-        session.dataTask(with: request) { _, _, error in
-            if let error = error {
-                completion(.failure(error))
+        session.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                completion(.failure(error!))
                 return
             }
-            completion(.success(()))
+            do {
+                let json = try JSONSerialization.jsonObject(with: data, options: [])
+
+                if let dict = json as? [String: Any] {
+                    if let listID = dict["id"] as? Int {
+                        completion(.success(listID))
+                        return
+                    }
+                    
+                    if let message = dict["message"] as? String {
+                        completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: message])))
+                        return
+                    }
+                }
+            } catch {
+                completion(.failure(error))
+            }
         }.resume()
     }
     
     // MARK: - Get All Items for List
-    func getItemsForList(listId: Int, completion: @escaping (Result<[TodoListItemResponse], Error>) -> Void) {
+    func getItemsForList(listId: Int, completion: @escaping (Result<[TodoItem], Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists/\(listId)/items")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -313,7 +311,7 @@ class AuthManager: ObservableObject {
                     }
                 }
                 
-                let items = try JSONDecoder().decode([TodoListItemResponse].self, from: data)
+                let items = try JSONDecoder().decode([TodoItem].self, from: data)
                 completion(.success(items))
             } catch {
                 completion(.failure(error))
@@ -322,7 +320,7 @@ class AuthManager: ObservableObject {
     }
 
     // MARK: - Get Item by ID (Check list_id)
-    func getItemById(itemId: Int, completion: @escaping (Result<TodoListItemResponse, Error>) -> Void) {
+    func getItemById(itemId: Int, completion: @escaping (Result<TodoItem, Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/items/\(itemId)")!
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
@@ -352,11 +350,63 @@ class AuthManager: ObservableObject {
                     }
                 }
                 
-                let item = try JSONDecoder().decode(TodoListItemResponse.self, from: data)
+                let item = try JSONDecoder().decode(TodoItem.self, from: data)
                 completion(.success(item))
             } catch {
                 completion(.failure(error))
             }
+        }.resume()
+    }
+    
+    // MARK: - Get Item by ID (Check list_id)
+    func putItemById(itemId: Int, itemTitle: String, itemDescription: String, itemDone: Bool, completion: @escaping (Result<Void, Error>) -> Void) {
+        let url = URL(string: "\(API.baseURL)/api/items/\(itemId)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "PUT"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let newItem = TodoItem(id: itemId, title: itemTitle, description: itemDescription, done: itemDone)
+        request.httpBody = try? JSONEncoder().encode(newItem)
+        
+        let sessionConfiguration = URLSessionConfiguration.default
+
+        sessionConfiguration.httpAdditionalHeaders = [
+            "Authorization": "Bearer \(token)"
+        ]
+
+        let session = URLSession(configuration: sessionConfiguration)
+
+        session.dataTask(with: request) { _, _, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            completion(.success(()))
+        }.resume()
+    }
+    
+    func deleteItemById(itemId: Int, completion: @escaping (Result<Void, Error>) -> Void) {
+        let url = URL(string: "\(API.baseURL)/api/items/\(itemId)")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "DELETE"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let sessionConfiguration = URLSessionConfiguration.default
+
+        sessionConfiguration.httpAdditionalHeaders = [
+            "Authorization": "Bearer \(token)"
+        ]
+
+        let session = URLSession(configuration: sessionConfiguration)
+
+        session.dataTask(with: request) { _, _, error in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+            completion(.success(()))
         }.resume()
     }
 

@@ -6,9 +6,9 @@
 //
 
 struct TodoList: Codable {
-    let id: Int?
+    let id: Int
     let title: String
-    let description: String?
+    let description: String
 }
 
 var mockTodoLists: [TodoList] = [

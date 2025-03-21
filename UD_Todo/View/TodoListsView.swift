@@ -22,9 +22,53 @@ struct TodoListsView: View {
                     }
                 }
                 .padding(.horizontal)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button {
+                            vm.onAddButtonClicked()
+                        } label: {
+                            Image(systemName: "plus.circle")
+                        }
+                    }
+                }
+                .sheet(isPresented: $vm.isAddingSheetPresented) {
+                    addingSheet
+                }
                 .searchable(text: $vm.searchText, prompt: "Поиск")
+                .onAppear {
+                    vm.fetchLists()
+                }
             }
             .navigationTitle("Задачи")
+        }
+    }
+    
+    var addingSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    TextField("Title", text: $vm.addingTitle, prompt: Text("Название"))
+                    TextField("Description", text: $vm.addingDescription, prompt: Text("Описание"))
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Добавить список")
+            .toolbarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Закрыть") {
+                        vm.closeAddingSheet()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Сохранить") {
+                        vm.saveAddingSheet()
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            vm.closeAddingSheet()
         }
     }
 }

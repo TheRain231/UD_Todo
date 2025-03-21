@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ListView: View {
     var todoList: TodoList
-    @State private var vm = ListViewModel(allItems: todoItems)
+    @State private var vm = ListViewModel()
     
     var body: some View {
         NavigationStack {
@@ -51,7 +51,7 @@ struct ListView: View {
             .navigationTitle(vm.todoList.title)
         }
         .onAppear {
-            vm.todoList = todoList
+            vm.fetchList(todoList)
         }
     }
     
