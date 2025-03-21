@@ -8,7 +8,23 @@
 import SwiftUI
 
 struct ContentView: View {
-    @State var isAuthenticated = false
+    @AppStorage("isAuthenticated") var isAuthenticated = false
+    
+    init() {
+        if isAuthenticated {
+            AuthManager.shared.tryToken { [self] result in
+                switch result {
+                case .success(let success):
+                    if !success {
+                        self.isAuthenticated = false
+                        print("token is expired")
+                    }
+                case .failure(_):
+                    self.isAuthenticated = false
+                }
+            }
+        }
+    }
 
     var body: some View {
         Group {

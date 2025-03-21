@@ -14,11 +14,18 @@ struct TodoListsView: View {
         NavigationStack {
             ScrollView {
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 100)), count: 2), spacing: 5) {
-                    ForEach(vm.todoLists, id: \.id) { todoList in
+                    ForEach(vm.filteredTodoLists, id: \.id) { todoList in
                         NavigationLink(destination: ListView(todoList: todoList)) {
                             ListCellView(todoList: todoList)
                         }
                         .foregroundStyle(.primary)
+                        .contextMenu {
+                            Button(role: .destructive) {
+                                vm.deleteList(todoList)
+                            } label: {
+                                Label("Удалить", systemImage: "trash")
+                            }
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -80,8 +87,10 @@ struct ListCellView: View {
         ZStack {
             RoundedRectangle(cornerRadius: 8)
                 .fill(.regularMaterial)
-                .aspectRatio(contentMode: .fit)
+                .aspectRatio(2, contentMode: .fit)
             Text(todoList.title)
+                .font(.title)
+                .fontWeight(.black)
         }
     }
 }

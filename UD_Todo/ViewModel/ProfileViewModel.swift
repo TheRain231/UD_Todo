@@ -7,11 +7,10 @@
 
 import SwiftUI
 
-@Observable
 final class ProfileViewModel {
     var user: User = User.shared
     
     func logout() {
-        
+
     }
 }

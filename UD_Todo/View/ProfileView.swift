@@ -9,19 +9,14 @@ import SwiftUI
 
 struct ProfileView: View {
     @State private var vm = ProfileViewModel()
+    @AppStorage("isAuthenticated") var isAuthenticated = false
     
     var body: some View {
         NavigationStack{
             VStack {
-                
-                Text(vm.user.name)
-                    .font(.system(size: 50, weight: .bold))
-                    .padding()
-                
-                Spacer()
-                
                 Button {
                     vm.logout()
+                    isAuthenticated = false
                 } label: {
                     HStack {
                         Text("Выйти")

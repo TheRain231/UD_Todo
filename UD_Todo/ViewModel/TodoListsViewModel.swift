@@ -12,6 +12,14 @@ final class TodoListsViewModel {
     var todoLists: [TodoList] = []
     var searchText: String = ""
     
+    var filteredTodoLists: [TodoList] {
+        if searchText.isEmpty {
+            return todoLists
+        } else {
+            return todoLists.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
+        }
+    }
+    
     var isAddingSheetPresented = false
     var addingTitle = ""
     var addingDescription = ""
@@ -25,6 +33,20 @@ final class TodoListsViewModel {
                 case .failure(let error):
                     print("Ошибка загрузки: \(error.localizedDescription)")
                 }
+            }
+        }
+    }
+    
+    func deleteList(_ list: TodoList) {
+        AuthManager.shared.deleteList(listId: list.id) { result in
+            switch result {
+            case .success(_):
+                print("list has been removed")
+                self.todoLists.removeAll {
+                    $0.id == list.id
+                }
+            case .failure(let failure):
+                print(failure.localizedDescription)
             }
         }
     }

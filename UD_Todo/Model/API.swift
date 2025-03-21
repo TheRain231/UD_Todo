@@ -41,6 +41,62 @@ class AuthManager: ObservableObject {
         token = keychain.get("token") ?? ""
     }
     
+    func tryToken(completion: @escaping (Result<Bool, Error>) -> Void) {
+        let url = URL(string: "\(API.baseURL)/api/lists")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let sessionConfiguration = URLSessionConfiguration.default
+
+        sessionConfiguration.httpAdditionalHeaders = [
+            "Authorization": "Bearer \(token)"
+        ]
+
+        let session = URLSession(configuration: sessionConfiguration)
+
+        session.dataTask(with: request) { data, response, error in
+            guard let data = data, error == nil else {
+                completion(.failure(error!))
+                return
+            }
+            do {
+                let json = try JSONSerialization.jsonObject(with: data, options: [])
+                
+                if let dict = json as? [String: Any] {
+                    if let errorMessage = dict["error"] as? String {
+                        completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: errorMessage])))
+                        return
+                    }
+                    
+                    if dict["data"] is [[String: Any]] {
+                        completion(.success(true))
+                        return
+                    }
+                    
+                    if dict["data"] is NSNull {
+                        completion(.success(true))
+                        return
+                    }
+                    
+                    if let message = dict["message"] as? String {
+                        if message.hasPrefix("token") {
+                            completion(.success(false))
+                        } else {
+                            completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: message])))
+                        }
+                        return
+                    }
+                }
+                
+                completion(.failure(NSError(domain: "APIError", code: 400, userInfo: [NSLocalizedDescriptionKey: "Unexpected response format"])))
+            } catch {
+                completion(.failure(error))
+            }
+        }.resume()
+    }
+    
     // MARK: - Fetch All Lists
     func getAllLists(completion: @escaping (Result<[TodoList], Error>) -> Void) {
         let url = URL(string: "\(API.baseURL)/api/lists")!
@@ -244,7 +300,7 @@ class AuthManager: ObservableObject {
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
-        let newItem = ["title": itemTitle, "desription": itemDescription]
+        let newItem = ["title": itemTitle, "description": itemDescription]
         request.httpBody = try? JSONEncoder().encode(newItem)
         
         let sessionConfiguration = URLSessionConfiguration.default

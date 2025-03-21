@@ -13,43 +13,50 @@ struct ListView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(vm.todoItems.indices, id: \.self) { index in
-                    HStack {
-                        Button {
-                            vm.toggleItemDone(at: index)
-                        } label: {
-                            circleImage(vm.todoItems[index].done)
+            Text(vm.todoList.description)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal)
+
+                List {
+                    ForEach(vm.todoItems.indices, id: \.self) { index in
+                        HStack {
+                            Button {
+                                vm.toggleItemDone(at: index)
+                            } label: {
+                                circleImage(vm.todoItems[index].done)
+                            }
+                            .buttonStyle(.plain)
+                            
+                            Button {
+                                vm.onItemClicked(index)
+                            } label: {
+                                Text(vm.todoItems[index].title)
+                            }
+                            .foregroundStyle(.primary)
                         }
-                        .buttonStyle(.plain)
-                        
+                    }
+                    .onDelete(perform: vm.removeItems)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
                         Button {
-                            vm.onItemClicked(index)
+                            vm.onAddButtonClicked()
                         } label: {
-                            Text(vm.todoItems[index].title)
+                            Image(systemName: "plus.circle")
                         }
-                        .foregroundStyle(.primary)
                     }
                 }
-                .onDelete(perform: vm.removeItems)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        vm.onAddButtonClicked()
-                    } label: {
-                        Image(systemName: "plus.circle")
-                    }
+                .sheet(isPresented: $vm.isAddingSheetPresented) {
+                    addingSheet
                 }
-            }
-            .sheet(isPresented: $vm.isAddingSheetPresented) {
-                addingSheet
-            }
-            .sheet(isPresented: $vm.isDetailSheetPresented) {
-                detailSheet
-            }
-            .navigationTitle(vm.todoList.title)
+                .sheet(isPresented: $vm.isDetailSheetPresented) {
+                    detailSheet
+                }
+                .navigationTitle(vm.todoList.title)
+            
         }
+        .background(Color(.secondarySystemBackground))
+
         .onAppear {
             vm.fetchList(todoList)
         }
