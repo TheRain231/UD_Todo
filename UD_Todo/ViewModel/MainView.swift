@@ -12,7 +12,7 @@ struct MainView: View {
         TabView {
             TodoListsView()
                 .tabItem {
-                    Label("Задачи", systemImage: "list.bullet")
+                    Label("Списки", systemImage: "list.bullet")
                 }
             
             ProfileView()

@@ -94,31 +94,40 @@ struct ListView: View {
     var detailSheet: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 10) {
-                Text(vm.todoItems[vm.selectedItemId!].title)
-                    .font(.largeTitle)
-                    .bold()
-                Text(vm.todoItems[vm.selectedItemId!].description)
-                
-                Spacer()
-                
-                Button {
-                    vm.toggleItemDone(at: vm.selectedItemId!)
-                } label: {
-                    Text("Выполнено")
-                        .foregroundStyle(vm.todoItems[vm.selectedItemId!].done ? Color.black : Color.white)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background {
-                            RoundedRectangle(cornerRadius: 10)
-                                .foregroundStyle(vm.todoItems[vm.selectedItemId!].done ? Color.gray : Color.blue)
-                        }
+                if !vm.isEditMode {
+                    Text(vm.todoItems[vm.selectedItemId!].title)
+                    Text(vm.todoItems[vm.selectedItemId!].description)
+                    
+                    Spacer()
+                    
+                    Button {
+                        vm.toggleItemDone(at: vm.selectedItemId!)
+                    } label: {
+                        Text("Выполнено")
+                            .foregroundStyle(vm.todoItems[vm.selectedItemId!].done ? Color.black : Color.white)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .foregroundStyle(vm.todoItems[vm.selectedItemId!].done ? Color.gray : Color.blue)
+                            }
+                    }
+                } else {
+                    TextField("Титле", text: $vm.detailTitle)
+                    TextField("дескриптион", text: $vm.detailDescription)
+                    
+                    Spacer()
                 }
-                
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button("Закрыть") {
                         vm.closeDetailSheet()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(vm.isEditMode ? "Сохранить" : "Редактировать") {
+                        vm.editButton()
                     }
                 }
             }

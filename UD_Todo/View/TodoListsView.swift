@@ -20,11 +20,7 @@ struct TodoListsView: View {
                         }
                         .foregroundStyle(.primary)
                         .contextMenu {
-                            Button(role: .destructive) {
-                                vm.deleteList(todoList)
-                            } label: {
-                                Label("Удалить", systemImage: "trash")
-                            }
+                            contextButtons(todoList)
                         }
                     }
                 }
@@ -41,12 +37,60 @@ struct TodoListsView: View {
                 .sheet(isPresented: $vm.isAddingSheetPresented) {
                     addingSheet
                 }
+                .sheet(item: $vm.chosenList) {_ in 
+                    editingSheet
+                }
                 .searchable(text: $vm.searchText, prompt: "Поиск")
                 .onAppear {
                     vm.fetchLists()
                 }
             }
-            .navigationTitle("Задачи")
+            .navigationTitle("Списки")
+        }
+    }
+    
+    func contextButtons(_ todoList: TodoList) -> some View {
+        VStack {
+            Button(role: .destructive) {
+                vm.deleteList(todoList)
+            } label: {
+                Label("Удалить", systemImage: "trash")
+            }
+            Button() {
+                vm.chooseList(todoList)
+            } label: {
+                Label("Редактировать", systemImage: "pencil")
+            }
+        }
+    }
+    
+    var editingSheet: some View {
+        NavigationStack {
+            List {
+                Section {
+                    TextField("Title", text: $vm.editingTitle, prompt: Text("Название"))
+                    TextField("Description", text: $vm.editingDescription, prompt: Text("Описание"))
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Изменить список")
+            .toolbarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Закрыть") {
+                        vm.closeEditingSheet()
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Сохранить") {
+                        vm.editList(vm.chosenList!)
+                        vm.closeEditingSheet()
+                    }
+                }
+            }
+        }
+        .onDisappear {
+            vm.closeEditingSheet()
         }
     }
     

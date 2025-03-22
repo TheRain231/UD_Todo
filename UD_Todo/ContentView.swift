@@ -28,10 +28,10 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if isAuthenticated {
-                MainView()
-            } else {
-                NavigationStack {
+                if isAuthenticated {
+                    MainView()
+                } else {
+                    NavigationStack {
                     LoginView()
                 }
             }

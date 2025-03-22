@@ -89,6 +89,33 @@ final class ListViewModel {
     func onItemClicked(_ id: Int) {
         selectedItemId = id
         isDetailSheetPresented = true
+        
+        let item = todoItems[selectedItemId!]
+        detailTitle = item.title
+        detailDescription = item.description
+    }
+    
+    var isEditMode = false
+    var detailTitle = ""
+    var detailDescription = ""
+    
+    func editButton() {
+        if isEditMode {
+            AuthManager.shared.putItemById(itemId: todoItems[selectedItemId!].id, itemTitle: detailTitle, itemDescription: detailDescription, itemDone: todoItems[selectedItemId!].done) { result in
+                switch result {
+                case .success(_):
+                    print("item updated")
+                    self.todoItems[self.selectedItemId!].title = self.detailTitle
+                    self.todoItems[self.selectedItemId!].description = self.detailDescription
+                case .failure(let failure):
+                    print(failure.localizedDescription)
+                }
+            }
+            isEditMode = false
+            isDetailSheetPresented = false
+        } else {
+            isEditMode = true
+        }
     }
     
     func closeDetailSheet() {

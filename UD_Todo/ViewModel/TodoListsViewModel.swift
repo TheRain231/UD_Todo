@@ -19,10 +19,6 @@ final class TodoListsViewModel {
             return todoLists.filter { $0.title.localizedCaseInsensitiveContains(searchText) }
         }
     }
-    
-    var isAddingSheetPresented = false
-    var addingTitle = ""
-    var addingDescription = ""
 
     func fetchLists() {
         AuthManager.shared.getAllLists { result in
@@ -50,6 +46,40 @@ final class TodoListsViewModel {
             }
         }
     }
+    
+    var chosenList: TodoList? = nil
+    var editingTitle = ""
+    var editingDescription = ""
+    
+    func chooseList(_ list: TodoList) {
+        chosenList = list
+        editingTitle = list.title
+        editingDescription = list.description
+    }
+    
+    func editList(_ list: TodoList) {
+        AuthManager.shared.updateList(listId: list.id, title: editingTitle, description: editingDescription) { result in
+            switch result {
+            case .success(_):
+                print("list has been updated")
+                let listIndex = self.todoLists.firstIndex{
+                    $0.id == list.id
+                }
+                self.todoLists[listIndex!].title = self.editingTitle
+                self.todoLists[listIndex!].description = self.editingDescription
+            case .failure(let failure):
+                print(failure.localizedDescription)
+            }
+        }
+    }
+    
+    func closeEditingSheet() {
+        chosenList = nil
+    }
+    
+    var isAddingSheetPresented = false
+    var addingTitle = ""
+    var addingDescription = ""
     
     func onAddButtonClicked() {
         isAddingSheetPresented = true

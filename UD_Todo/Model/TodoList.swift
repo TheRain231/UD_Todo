@@ -5,10 +5,10 @@
 //  Created by Андрей Степанов on 26.02.2025.
 //
 
-struct TodoList: Codable {
+struct TodoList: Codable, Identifiable {
     let id: Int
-    let title: String
-    let description: String
+    var title: String
+    var description: String
 }
 
 var mockTodoLists: [TodoList] = [
